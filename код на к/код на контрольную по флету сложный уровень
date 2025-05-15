@@ -1,0 +1,167 @@
+import flet as ft
+from datetime import datetime
+
+
+def main(page: ft.Page):
+    # Настройки страницы
+    page.title = "ToDo List App"
+    page.horizontal_alignment = "center"
+    page.scroll = "adaptive"
+    page.theme_mode = ft.ThemeMode.LIGHT
+    page.window_width = 500
+    page.window_height = 700
+    page.window_resizable = False
+
+    # Имя файла для хранения задач
+    FILE_NAME = "fff.txt"
+
+    # Загрузка задач из файла при запуске
+    def load_tasks():
+        try:
+            with open(FILE_NAME, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.strip():
+                        parts = line.strip().split("|||")
+                        if len(parts) >= 3:
+                            task_text = parts[0]
+                            comment = parts[1]
+                            date_added = parts[2]
+                            add_task_to_list(task_text, comment, date_added, save_to_file=False)
+        except FileNotFoundError:
+            pass  # Файл не существует при первом запуске
+
+    # Сохранение задач в файл
+    def save_tasks_to_file():
+        with open(FILE_NAME, "w", encoding="utf-8") as f:
+            for task in task_column.controls:
+                if isinstance(task, ft.Row) and len(task.controls) >= 4:
+                    task_text = task.controls[1].content.value
+                    comment = task.controls[2].tooltip if hasattr(task.controls[2], 'tooltip') else ""
+                    date_added = task.controls[3].value
+                    f.write(f"{task_text}|||{comment}|||{date_added}\n")
+
+    # Добавление задачи в список
+    def add_task_to_list(task_text, comment, date_added, save_to_file=True):
+        def delete_task(e):
+            task_column.controls.remove(task_row)
+            if save_to_file:
+                save_tasks_to_file()
+            page.update()
+
+        # Создаем элементы для отображения задачи
+        task_checkbox = ft.Checkbox()
+        task_text_field = ft.Text(task_text, size=16, weight="bold", expand=True)
+
+        # Иконка комментария (если комментарий есть)
+        comment_icon = ft.IconButton(
+            icon=ft.icons.COMMENT if comment else ft.icons.COMMENT_OUTLINED,
+            tooltip=comment,
+            icon_size=20,
+        )
+
+        date_text = ft.Text(date_added, size=12, color=ft.colors.GREY_600)
+        delete_btn = ft.IconButton(
+            icon=ft.icons.DELETE_OUTLINE,
+            icon_color=ft.colors.RED,
+            on_click=delete_task,
+            tooltip="Удалить задачу",
+        )
+
+        task_row = ft.Row(
+            controls=[
+                task_checkbox,
+                task_text_field,
+                comment_icon,
+                date_text,
+                delete_btn,
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+        task_column.controls.append(task_row)
+        if save_to_file:
+            save_tasks_to_file()
+        page.update()
+
+    # Обработчик добавления новой задачи
+    def add_task(e):
+        if new_task.value:
+            current_time = datetime.now().strftime("%d.%m.%Y %H:%M")
+            comment_text = new_comment.value if new_comment.value else ""
+            add_task_to_list(new_task.value, comment_text, current_time)
+            new_task.value = ""
+            new_comment.value = ""
+            new_task.focus()
+            page.update()
+
+    # Очистка всех задач
+    def clear_all_tasks(e):
+        task_column.controls.clear()
+        save_tasks_to_file()
+        page.update()
+
+    # Элементы интерфейса
+    new_task = ft.TextField(
+        hint_text="Введите новую задачу...",
+        expand=True,
+        autofocus=True,
+        on_submit=add_task,
+    )
+
+    new_comment = ft.TextField(
+        hint_text="Комментарий к задаче...",
+        expand=True,
+    )
+
+    task_column = ft.Column(
+        spacing=10,
+        expand=True,
+        scroll=ft.ScrollMode.AUTO,
+    )
+
+    # Загружаем задачи при запуске
+    load_tasks()
+
+    # Добавляем элементы на страницу
+    page.add(
+        ft.Text("ToDo List", size=24, weight="bold"),
+        ft.Row(
+            controls=[
+                new_task,
+                ft.IconButton(
+                    icon=ft.icons.ADD,
+                    icon_color=ft.colors.GREEN,
+                    on_click=add_task,
+                    tooltip="Добавить задачу",
+                ),
+            ],
+        ),
+        ft.Row(
+            controls=[
+                new_comment,
+            ],
+        ),
+        ft.Divider(),
+        ft.Container(
+            content=task_column,
+            expand=True,
+            padding=ft.padding.only(top=10),
+        ),
+        ft.Row(
+            controls=[
+                ft.ElevatedButton(
+                    "Очистить все",
+                    icon=ft.icons.DELETE_FOREVER,
+                    on_click=clear_all_tasks,
+                    color=ft.colors.WHITE,
+                    bgcolor=ft.colors.RED,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+    )
+
+
+ft.app(target=main)
